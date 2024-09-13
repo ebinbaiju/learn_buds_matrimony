@@ -1,43 +1,73 @@
 from django.shortcuts import render
-
+from django.views.generic import TemplateView
 #profile display imports :
 from django.shortcuts import render, get_object_or_404
 from U_auth.models import *
+from typing import Any
+from django.contrib import messages
+from django.http import Http404
 
-# Create your views here.
-def demo_pr(request, user_id):
-    # Fetch the user and related data
-    user = get_object_or_404(costume_user, id=user_id)
-    personal_details = get_object_or_404(UserPersonalDetails, user=user)
-    additional_details = get_object_or_404(AdditionalDetails, user=user)
-    pictures = Pictures.objects.filter(user=personal_details)
+
+
+
+# class UserProfileView(TemplateView):
+#     template_name = 'users_pr_view.html'
+
+#     def get_context_data(self, **kwargs) -> dict[str, Any]:
+#         context = super().get_context_data(**kwargs)
+#         user_id = self.kwargs.get('user_id', None)
+#         if user_id:
+#             user = costume_user.objects.get(id=user_id)
+#             user_details = UserPersonalDetails.objects.get(user=user)
+#             print(user, "kkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
+#             additionalDetails = AdditionalDetails.objects.get(user=user)
+#             pictures = Pictures.objects.get(user=user)
+#             context['user_details'] = user_details
+#             context['additional_details'] = additionalDetails
+#             context['pictures'] = pictures
+#         messages.error(self.request,"unable to identify user...!!!")
+#         return context
+
+class UserProfileView(TemplateView):
+    template_name = 'users_pr_view.html'
+
+    def get_context_data(self, **kwargs) -> dict:
+        context = super().get_context_data(**kwargs)
+        user_id = self.kwargs.get('user_id', None)
+        
+        if user_id:
+            try:
+                # Get the user object or return 404
+                user = get_object_or_404(costume_user, id=user_id)
+
+                # Retrieve related objects safely
+                user_details = get_object_or_404(UserPersonalDetails, user_id=user)
+                additional_details = get_object_or_404(AdditionalDetails, user=user)
+                pictures = Pictures.objects.filter(user=user_details)
+              
+
+                # Add retrieved data to the context
+                context['user_details'] = user_details
+                context['additional_details'] = additional_details
+                context['pictures'] = pictures
+                context['userinfo'] = user
+
+            except costume_user.DoesNotExist:
+                # User not found, set error message and raise a 404
+                messages.error(self.request, "User does not exist.")
+                raise Http404("User not found")
+
+            except (UserPersonalDetails.DoesNotExist, AdditionalDetails.DoesNotExist, Pictures.DoesNotExist):
+                # Related objects not found, set error message and raise a 404
+                messages.error(self.request, "Incomplete profile details.")
+                raise Http404("Profile details missing")
+        else:
+            # If user_id is None, raise 404 and display an error message
+            messages.error(self.request, "Unable to identify user...!!!")
+            raise Http404("User ID not provided")
+
+        return context
     
-    # Use the correct relationship to UserPersonalDetails
-    hobbies = Hobbies.objects.filter(userpersonaldetails=personal_details)
-    interests = Interests.objects.filter(userpersonaldetails=personal_details)
-    
-    # Create context to pass to the template
-    context = {
-        'user': user,
-        'personal_details': personal_details,
-        'additional_details': additional_details,
-        'pictures': pictures,
-        'hobbies': hobbies,
-        'interests': interests,
-        'family_type': additional_details.family_type,
-        'family_name': additional_details.family_name,
-        'father_name': additional_details.father_name,
-        'father_occupation': additional_details.father_occupation,
-        'mother_name': additional_details.mother_name,
-        'mother_occupation': additional_details.mother_occupation,
-        'total_siblings': additional_details.total_siblings,
-        'total_siblings_married': additional_details.total_siblings_married,
-    }
-
-    # Render the template with the context
-    return render(request, 'users_pr_view.html', context)
-
-
 
 
 def messages_pg(request):
